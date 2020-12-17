@@ -1,5 +1,7 @@
 package ec.com.dev.Controller;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +36,19 @@ public class HomeController {
 	public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file) throws Exception {
 
 		FileUpload uploaded = firebaseStrategy.uploadFile(file);
+
+		return ResponseEntity.ok(uploaded);
+	}
+	
+	@PostMapping(value = "/upload-files", produces = "application/json")
+	public ResponseEntity<?> upload(@RequestParam("file") MultipartFile[] file) throws Exception {
+		if(file.length < 0) {
+			return ResponseEntity
+					.status(400)
+					.body("{\"error\":\"Debe seleccionar una imagen\"}");
+		}
+		
+		List<FileUpload> uploaded = firebaseStrategy.uploadFiles(file);
 
 		return ResponseEntity.ok(uploaded);
 	}

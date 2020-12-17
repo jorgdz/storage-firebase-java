@@ -6,8 +6,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import javax.annotation.PostConstruct;
 
@@ -16,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
-
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
@@ -42,10 +47,7 @@ public class FirebaseStrategyImpl implements FirebaseStrategy {
 	@PostConstruct
 	private void initializeFirebase() throws Exception {
 		FileInputStream serviceAccount = new FileInputStream(System.getProperty("user.dir").concat("/istb-storage-firebase.json"));
-		
-		log.info(this.bucket);
-		log.info(this.projectId);
-		
+				
 		this.options = StorageOptions.newBuilder().setProjectId(projectId)
 				.setCredentials(GoogleCredentials.fromStream(serviceAccount)).build();
 	}
@@ -57,13 +59,43 @@ public class FirebaseStrategyImpl implements FirebaseStrategy {
     String objectName = generateFileName(multipartFile);
 
     Storage storage = this.options.getService();
-    
     BlobId blobId = BlobId.of(bucket, objectName);
-    BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+    
+    String tokenRandomFirebase = UUID.randomUUID().toString();
+    
+    Map<String, String> firebaseStorageDownloadTokens = new HashMap<String, String>();
+    firebaseStorageDownloadTokens.put("firebaseStorageDownloadTokens", tokenRandomFirebase);
+    
+    BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
+    		.setContentType(multipartFile.getContentType())
+    		.setMetadata(firebaseStorageDownloadTokens)
+    		.build();
+        
     Blob blob = storage.create(blobInfo, Files.readAllBytes(filePath));
     
     log.info("Resp: " + blob);
-		return new FileUpload(blob.getBucket(), blob.getName(), blob.getGeneration(), blob.getSize(), blob.getContentType());
+    
+    return new FileUpload(blob.getBucket(), 
+				blob.getName(), 
+				blob.getGeneration(), 
+				blob.getSize(), 
+				blob.getContentType(),
+				this.getURL(blob.getName(), tokenRandomFirebase));
+	}
+	
+	@Override
+	public List<FileUpload> uploadFiles(MultipartFile[] files) throws Exception {
+		List<FileUpload> filesUploads = new ArrayList<>();
+		
+		Arrays.asList(files).forEach(file -> {
+			try {
+				filesUploads.add(this.uploadFile(file));
+			} catch (Exception e) {
+				log.error("Error: " + e.getMessage());
+			}
+		});
+		
+		return filesUploads;
 	}
 	
 	@Override
@@ -87,6 +119,10 @@ public class FirebaseStrategyImpl implements FirebaseStrategy {
 
 	private String generateFileName(MultipartFile multiPart) {
 		return new Date().getTime() + "-" + Objects.requireNonNull(multiPart.getOriginalFilename()).replace(" ", "_");
+	}
+	
+	private String getURL (String name, String tokenRandomFirebase) {
+		return "https://firebasestorage.googleapis.com/v0/b/" + bucket + "/o/" + name + "?alt=media&token=" + tokenRandomFirebase;
 	}
 
 }

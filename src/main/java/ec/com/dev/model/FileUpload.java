@@ -22,4 +22,7 @@ public class FileUpload {
 	@Getter @Setter
 	private String contentType;
 	
+	@Getter @Setter
+	private String url;
+	
 }
