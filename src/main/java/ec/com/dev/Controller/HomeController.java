@@ -53,6 +53,17 @@ public class HomeController {
 		return ResponseEntity.ok(uploaded);
 	}
 	
+	@PostMapping("/up")
+	public String up(@RequestParam("file") MultipartFile[] file) throws Exception {
+		if(file.length < 0) {
+			return "redirect:/";
+		}
+		
+		List<FileUpload> uploaded = firebaseStrategy.uploadFiles(file);
+
+		return "redirect:/";
+	}
+	
 	@DeleteMapping(value="/delete-file", produces="application/json")
 	public ResponseEntity<?> delete(@RequestParam("name") String name) throws Exception {
 
