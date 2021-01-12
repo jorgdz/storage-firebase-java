@@ -12,6 +12,7 @@ target/
 .settings
 .springBeans
 .sts4-cache
+istb-storage-firebase.json
 
 ### IntelliJ IDEA ###
 .idea
